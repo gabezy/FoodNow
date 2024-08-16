@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: FoodNow
+  datasource:
+    url: jdbc:postgresql://localhost:5432/food_now_api
+    username: postgres
+    password: dev
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    generate-ddl: true
+    hibernate:
+      ddl-auto: create

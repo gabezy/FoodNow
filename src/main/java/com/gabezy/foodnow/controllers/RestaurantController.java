@@ -64,7 +64,8 @@ public class RestaurantController {
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Restaurant restaurant) {
         try {
             var restaurantSaved = restaurantRepository.findById(id).get();
-            BeanUtils.copyProperties(restaurant, restaurantSaved, "id");
+            BeanUtils.copyProperties(restaurant, restaurantSaved, "id", "paymentMethods", "address", "createdAt");
+            // copia a propriedades de um objeto para o outro, sendo possível ignorar propriedades específicas
             return ResponseEntity.ok(restaurantRepository.save(restaurantSaved));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

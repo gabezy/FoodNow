@@ -6,6 +6,13 @@ spring:
     username: postgres
     password: dev
     driver-class-name: org.postgresql.Driver
+    hikari:
+#      quantidade máxima de conexão da pool
+      maximum-pool-size: 5
+#      quantidade mínima de conexão da pool
+      minimum-idle: 3
+#      tempo de timeout para desconectar pool em idle (ms)
+      idle-timeout: 10000
   jpa:
     show-sql: true
     properties:

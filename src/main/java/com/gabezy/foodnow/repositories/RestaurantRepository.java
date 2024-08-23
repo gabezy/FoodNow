@@ -12,7 +12,7 @@ import java.util.List;
 public interface RestaurantRepository
         extends GenericRepository<Restaurant, Long>, RestaurantRepositoryCustomized,
         JpaSpecificationExecutor<Restaurant> {
-    @Query("FROM Restaurant r JOIN FETCH r.cuisine LEFT JOIN FETCH r.paymentMethods")
+    @Query("FROM Restaurant r JOIN FETCH r.cuisine")
     List<Restaurant> findAll();
     // sobrescrevendo o método findAll para remover o problema de n+1 queries usando JOINs
     List<Restaurant> findByDeliveryFeeBetween(BigDecimal minDeliveryFee, BigDecimal maxDeliveryFee);

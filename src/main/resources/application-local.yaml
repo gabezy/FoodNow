@@ -19,6 +19,16 @@ spring:
       hibernate:
         format_sql: false
         dialect: org.hibernate.dialect.PostgreSQLDialect
-    generate-ddl: true
-    hibernate:
-      ddl-auto: create
+  flyway:
+#    passando a localização do db/migration e db/testdata para executar os scripts
+    locations: classpath:db/migration,classpath:db/testdata
+#      javax:            Gera o ddl de criação das tabelas pelo mapeamento do JPA (Não executa o código sql)
+#        persistence:
+#          schema-generation:
+#            scripts:
+#              action: create
+#              create-target: src/main/resources/ddl.sql
+
+#    generate-ddl: true
+#    hibernate:
+#      ddl-auto: create

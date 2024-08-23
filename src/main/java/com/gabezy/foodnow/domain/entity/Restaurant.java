@@ -53,7 +53,7 @@ public class Restaurant {
     @UpdateTimestamp // Coloca a timestamp quando atualizada (faz parte do Hibernate)
     private LocalDateTime updatedAt;
 
-//    @JsonIgnore
+    @JsonIgnore
     @ManyToMany
     @JoinTable(name = "restaurant_payment_method", // Nomne da tabela intermediária
         joinColumns = @JoinColumn(name = "restaurant_id"), //  define o nome da coluna que faz referência a FK da entidade (Restaurant)

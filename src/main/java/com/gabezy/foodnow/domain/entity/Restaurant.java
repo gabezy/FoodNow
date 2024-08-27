@@ -1,8 +1,7 @@
 package com.gabezy.foodnow.domain.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.gabezy.foodnow.domain.entity.model.Address;
+import com.gabezy.foodnow.domain.embedded.Address;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

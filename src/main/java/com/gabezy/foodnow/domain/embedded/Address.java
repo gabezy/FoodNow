@@ -1,4 +1,4 @@
-package com.gabezy.foodnow.domain.entity.model;
+package com.gabezy.foodnow.domain.embedded;
 
 import com.gabezy.foodnow.domain.entity.City;
 import jakarta.persistence.*;

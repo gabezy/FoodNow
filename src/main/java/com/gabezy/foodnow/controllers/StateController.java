@@ -1,13 +1,12 @@
 package com.gabezy.foodnow.controllers;
 
-import com.gabezy.foodnow.domain.entity.City;
-import com.gabezy.foodnow.repositories.CityRepository;
+import com.gabezy.foodnow.domain.entity.State;
+import com.gabezy.foodnow.repositories.StateRepository;
+import com.gabezy.foodnow.services.StateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -16,11 +15,22 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StateController {
 
-    private CityRepository cityRepository;
+    private final StateService stateService;
+    private final StateRepository stateRepository;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<City>> getStates() {
-        return ResponseEntity.ok(cityRepository.findAll());
+    public ResponseEntity<List<State>> findAll() {
+        return ResponseEntity.ok(stateRepository.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<State> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(stateService.findById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<State> update(@PathVariable Long id, @RequestBody State input) {
+        return ResponseEntity.ok(stateService.update(id, input));
     }
 
 }

@@ -1,7 +1,9 @@
 package com.gabezy.foodnow.controllers;
 
 import com.gabezy.foodnow.domain.entity.Cuisine;
+import com.gabezy.foodnow.exceptions.EntityNotFoundException;
 import com.gabezy.foodnow.repositories.CuisineRepository;
+import com.gabezy.foodnow.services.CuisineService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,6 +23,7 @@ import java.util.List;
 public class CuisineController {
 
     private final CuisineRepository cuisineRepository;
+    private final CuisineService cuisineService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Cuisine>> getAll() {
@@ -30,8 +33,7 @@ public class CuisineController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Cuisine> getById(@PathVariable Long id) {
-        return cuisineRepository.findById(id).map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(cuisineService.findById(id));
     }
 
     @GetMapping("/by-name")
@@ -58,19 +60,14 @@ public class CuisineController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Cuisine> update(@PathVariable Long id, @RequestBody Cuisine cuisine) {
-        var cuisineSaved = cuisineRepository.findById(id)
-                .orElseThrow(() -> new DataIntegrityViolationException("cuisine not found"));
+        var cuisineSaved = cuisineService.findById(id);
         BeanUtils.copyProperties(cuisine, cuisineSaved, "id");
         return ResponseEntity.ok(cuisineRepository.save(cuisineSaved));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        try {
             cuisineRepository.deleteById(id);
             return ResponseEntity.noContent().build();
-        } catch (DataIntegrityViolationException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
     }
 }

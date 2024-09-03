@@ -3,8 +3,8 @@ package com.gabezy.foodnow.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gabezy.foodnow.domain.entity.Restaurant;
 import com.gabezy.foodnow.repositories.RestaurantRepository;
+import com.gabezy.foodnow.services.RestaurantService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.*;
@@ -22,14 +22,13 @@ import java.util.logging.Logger;
 public class RestaurantController {
 
     private final RestaurantRepository restaurantRepository;
+    private final RestaurantService restaurantService;
 
     Logger logger = Logger.getLogger(getClass().getName());
 
     @GetMapping("/{id}")
     public ResponseEntity<Restaurant> findById(@PathVariable Long id) {
-        return restaurantRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(restaurantService.findById(id));
     }
 
     @GetMapping
@@ -50,26 +49,15 @@ public class RestaurantController {
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody Restaurant restaurant, UriComponentsBuilder builder) {
-        try {
-            var restaurantSaved = restaurantRepository.save(restaurant);
-            var uri = builder.path("/restaurants/{id}").buildAndExpand(restaurantSaved.getId()).toUri();
-            return ResponseEntity.created(uri).body(restaurantSaved);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<Restaurant> create(@RequestBody Restaurant input, UriComponentsBuilder builder) {
+        var restaurant = restaurantService.save(input);
+        var uri = builder.path("restaurants/{id}").buildAndExpand(restaurant.getId()).toUri();
+        return ResponseEntity.created(uri).body(restaurant);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Restaurant restaurant) {
-        try {
-            var restaurantSaved = restaurantRepository.findById(id).get();
-            BeanUtils.copyProperties(restaurant, restaurantSaved, "id", "paymentMethods", "address", "createdAt");
-            // copia a propriedades de um objeto para o outro, sendo possível ignorar propriedades específicas
-            return ResponseEntity.ok(restaurantRepository.save(restaurantSaved));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody Restaurant restaurant) {
+        return ResponseEntity.ok(restaurantService.update(id, restaurant));
     }
 
     @PatchMapping("/{id}")

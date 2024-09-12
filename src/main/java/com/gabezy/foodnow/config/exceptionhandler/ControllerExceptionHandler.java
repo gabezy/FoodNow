@@ -1,59 +1,157 @@
 package com.gabezy.foodnow.config.exceptionhandler;
 
-import com.gabezy.foodnow.exceptions.BusinessException;
-import com.gabezy.foodnow.exceptions.CityNotFoundException;
-import com.gabezy.foodnow.exceptions.EntityInUseException;
-import com.gabezy.foodnow.exceptions.StateNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletRequestWrapper;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.PropertyBindingException;
+import com.gabezy.foodnow.exceptions.*;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import static java.time.LocalDateTime.now;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(StateNotFoundException.class)
-    public ResponseEntity<StandardError> handleStateNotFoundException(StateNotFoundException e, HttpServletRequest request) {
+    private static final String MSG_ERROR_GENERIC_USER = "An unexpected internal server error has occurred. Try again and if the problem persist, " +
+            "contact your system administrator";
 
-       return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(buildStandardError(e.getMessage(), HttpStatus.NOT_FOUND.value(), request));
+
+    @Override // trata o erro na serialização do jackson para objeto java
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        Throwable rootCause = ExceptionUtils.getRootCause(ex);
+
+        if (rootCause instanceof InvalidFormatException cause) {
+            return handleInvalidFormatException(cause, headers, status, request);
+        } else if (rootCause instanceof PropertyBindingException cause) {
+            return handlePropertyBindingException(cause, headers, status, request);
+        }
+
+        String message = "Unexpected character at request body. Please verify syntax error";
+        return handleExceptionInternal(ex, message, headers, status, request, ErrorType.BAD_REQUEST);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        if (ex instanceof MethodArgumentTypeMismatchException e) {
+            // Exception ocorre quando passa um tipo inválido como parâmetro da url
+            return handleMethodArgumentTypeMismatchException(e, headers, status, request);
+        }
+        return super.handleTypeMismatch(ex, headers, status, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleNoResourceFoundException(NoResourceFoundException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        var detail = String.format("the resource '%s' is not available", ex.getResourcePath());
+        return handleExceptionInternal(ex, detail, headers, status, request, ErrorType.RESOURCE_NOT_FOUND);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleNoHandlerFoundException(NoHandlerFoundException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        var detail = String.format("The resource %s is not available", ex.getRequestURL());
+        return handleExceptionInternal(ex, detail, headers, status, request, ErrorType.RESOURCE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(StateNotFoundException.class)
+    public ResponseEntity<Object> handleStateNotFoundException(StateNotFoundException ex, WebRequest request) {
+        return this.handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), HttpStatus.NOT_FOUND, request, ErrorType.RESOURCE_NOT_FOUND);
     }
 
     @ExceptionHandler(CityNotFoundException.class)
-    public ResponseEntity<StandardError> handleCityNotFoundException(CityNotFoundException e, HttpServletRequest request) {
+    public ResponseEntity<Object> handleCityNotFoundException(CityNotFoundException ex, WebRequest request) {
+        return this.handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), HttpStatus.NOT_FOUND, request, ErrorType.RESOURCE_NOT_FOUND);
+    }
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(buildStandardError(e.getMessage(), HttpStatus.NOT_FOUND.value(), request));
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<Object> handleEntityNotFoundException (EntityNotFoundException ex, WebRequest request) {
+        return this.handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), HttpStatus.NOT_FOUND, request, ErrorType.RESOURCE_NOT_FOUND);
     }
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<StandardError> handleBusinessException(BusinessException e, HttpServletRequest request) {
-
-        return ResponseEntity.badRequest()
-                .body(buildStandardError(e.getMessage(), HttpStatus.BAD_REQUEST.value(), request));
+    public ResponseEntity<Object> handleBusinessException(BusinessException ex, WebRequest request) {
+        return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), HttpStatus.BAD_REQUEST, request, ErrorType.BAD_REQUEST);
     }
 
     @ExceptionHandler(EntityInUseException.class)
-    public ResponseEntity<StandardError> handleEntityInUseException(EntityInUseException e, HttpServletRequestWrapper request) {
-
-        return ResponseEntity.status(HttpStatus.CONFLICT).
-                body(buildStandardError(e.getMessage(), HttpStatus.CONFLICT.value(), request));
+    public ResponseEntity<Object> handleEntityInUseException(EntityInUseException ex, WebRequest request) {
+        return handleExceptionInternal(ex, ex.getMessage(), new HttpHeaders(), HttpStatus.BAD_REQUEST, request, ErrorType.BAD_REQUEST);
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleExceptionType(Exception ex, WebRequest request) {
+        ex.printStackTrace();
+        return handleExceptionInternal(ex, MSG_ERROR_GENERIC_USER, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request, ErrorType.INTERNAL_ERROR);
+    }
 
+    private ResponseEntity<Object> handleExceptionInternal(Exception ex, @Nullable Object body, HttpHeaders headers,
+                                                             HttpStatusCode statusCode, WebRequest request, ErrorType type) {
+        if (body == null) {
+            body = createResponseErrorBuilder(null, statusCode, type).build();
+        } else if (body instanceof String message) {
+            body = createResponseErrorBuilder(message, statusCode, type).build();
+        }
+        return super.handleExceptionInternal(ex, body, headers, statusCode, request);
+    }
 
-    private StandardError buildStandardError(String message, Integer status, HttpServletRequest request) {
-        return StandardError.builder()
-                .message(message)
-                .status(status)
-                .path(request.getRequestURI())
-                .timestamp(now())
+    // Lida com os erros de campos existentes, mas informado com o tipo errado
+    private ResponseEntity<Object> handleInvalidFormatException(InvalidFormatException ex, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+        String property = ex.getPath().stream()
+                .map(JsonMappingException.Reference::getFieldName)
+                .collect(Collectors.joining("."));
+        var detail = String.format("the property '%s' receive the value '%s' that is an invalid type. " +
+                "Correct and inform a type compatible with %s", property, ex.getValue(), ex.getTargetType().getSimpleName());
+        var errorType = ErrorType.BAD_REQUEST;
+        var error = createResponseErrorBuilder(detail, statusCode, errorType)
+                .userMessage(MSG_ERROR_GENERIC_USER)
                 .build();
+        return handleExceptionInternal(ex, error, headers, statusCode, request, errorType);
     }
 
+    private ResponseEntity<Object> handlePropertyBindingException(PropertyBindingException ex, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+        var fields = new HashMap<String, String >();
+        ex.getPath().forEach(cv -> {
+            if (cv.getFieldName() != null) {
+                fields.put(cv.getFieldName(), "Invalid property");
+            }
+        });
+        var errorType = ErrorType.BAD_REQUEST;
+        var error = createResponseErrorBuilder("Unexpected property at request body", statusCode, errorType)
+                .fields(fields)
+                .userMessage(MSG_ERROR_GENERIC_USER)
+                .build();
+        return handleExceptionInternal(ex, error, headers, statusCode, request, errorType);
+    }
+
+    private ResponseEntity<Object> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex,
+                                                                             HttpHeaders headers, HttpStatusCode status,
+                                                                             WebRequest request)
+    {
+        var message = String.format("The URL parameter '%s' receive the value '%s' that is a invalid type. " +
+                "Correct and inform a value compatible with %s type", ex.getName(), ex.getValue(),
+                ex.getParameter().getParameterType().getSimpleName());
+        return handleExceptionInternal(ex, message, headers, status, request, ErrorType.INVALID_PARAMETER);
+    }
+
+    private ResponseError.ResponseErrorBuilder createResponseErrorBuilder(@Nullable String detail, HttpStatusCode status, ErrorType type) {
+        return ResponseError.builder()
+                .title(type.getTitle())
+                .status(status.value())
+                .detail(detail)
+                .type(type.getUri())
+                .timestamp(LocalDateTime.now());
+    }
 }

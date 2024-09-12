@@ -1,11 +1,16 @@
 package com.gabezy.foodnow.controllers;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gabezy.foodnow.domain.entity.Restaurant;
 import com.gabezy.foodnow.repositories.RestaurantRepository;
 import com.gabezy.foodnow.services.RestaurantService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -39,7 +44,7 @@ public class RestaurantController {
     @GetMapping("/by-delivery-fee")
     public ResponseEntity<List<Restaurant>> findByDeliveryFee(@RequestParam(required = false) String name,
                                                               @RequestParam(required = false) BigDecimal minDeliveryFee,
-                                                              @RequestParam (required = false) BigDecimal maxDeliveryFee) {
+                                                              @RequestParam(required = false) BigDecimal maxDeliveryFee) {
         return ResponseEntity.ok(restaurantRepository.findCustomized(name, minDeliveryFee, maxDeliveryFee));
     }
 
@@ -61,25 +66,33 @@ public class RestaurantController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<?> patch(@PathVariable Long id, @RequestBody Map<String, Object> fields) {
+    public ResponseEntity<?> patch(@PathVariable Long id, @RequestBody Map<String, Object> fields, HttpServletRequest request) {
         var restaurantSaved = restaurantRepository.findById(id).get();
-        this.merge(fields, restaurantSaved);
+        this.merge(fields, restaurantSaved, request);
         restaurantRepository.save(restaurantSaved);
         return ResponseEntity.ok(restaurantSaved);
     }
 
-    private void merge(Map<String, Object> fields, Restaurant restaurant) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        Restaurant restaurantOrigin = objectMapper.convertValue(fields, Restaurant.class);
-        logger.info("merging restaurant " + restaurantOrigin.getName());
-        logger.info("merging restaurant " + restaurantOrigin.getDeliveryFee());
-        fields.forEach((key, value) -> {
-            Field field = ReflectionUtils.findField(Restaurant.class, key);
-            if (field != null) {
-                field.setAccessible(true);
-                Object newValue = ReflectionUtils.getField(field, restaurantOrigin);
-                ReflectionUtils.setField(field, restaurant, newValue);
-            }
-        });
+    private void merge(Map<String, Object> fields, Restaurant restaurant, HttpServletRequest request) {
+        var serverHttpRequest = new ServletServerHttpRequest(request);
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, true);
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
+            Restaurant restaurantOrigin = objectMapper.convertValue(fields, Restaurant.class);
+            logger.info("merging restaurant " + restaurantOrigin.getName());
+            logger.info("merging restaurant " + restaurantOrigin.getDeliveryFee());
+            fields.forEach((key, value) -> {
+                Field field = ReflectionUtils.findField(Restaurant.class, key);
+                if (field != null) {
+                    field.setAccessible(true);
+                    Object newValue = ReflectionUtils.getField(field, restaurantOrigin);
+                    ReflectionUtils.setField(field, restaurant, newValue);
+                }
+            });
+        } catch (IllegalArgumentException e) {
+            Throwable rootCause = ExceptionUtils.getRootCause(e);
+            throw new HttpMessageNotReadableException(e.getMessage(), rootCause, serverHttpRequest );
+        }
     }
 }

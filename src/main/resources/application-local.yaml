@@ -19,9 +19,17 @@ spring:
       hibernate:
         format_sql: false
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  jackson:
+    time-zone: America/Sao_Paulo # Ajustar timezone do LocalDateTime
+    deserialization:
+      fail-on-unknown-properties: true # Lança exceção quando tem uma propriedade desconhecida sendo passada na requisição (HttpNotReadableMessageException)
+      fail-on-ignored-properties: true # Lança exceção quando tem uma propriedade com a @JsonIgnore e é passada na requisição (HttpNotReadableMessageException)
   flyway:
 #    passando a localização do db/migration e db/testdata para executar os scripts
     locations: classpath:db/migration,classpath:db/testdata
+  web:
+    resources:
+      add-mappings: false # Habilitar o noHandlerFoundException
 #      javax:            Gera o ddl de criação das tabelas pelo mapeamento do JPA (Não executa o código sql)
 #        persistence:
 #          schema-generation:

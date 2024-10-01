@@ -6,12 +6,17 @@ import com.fasterxml.jackson.databind.exc.PropertyBindingException;
 import com.gabezy.foodnow.exceptions.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.lang.Nullable;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
@@ -22,10 +27,15 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @Autowired
+    private MessageSource messageSource;
 
     private static final String MSG_ERROR_GENERIC_USER = "An unexpected internal server error has occurred. Try again and if the problem persist, " +
             "contact your system administrator";
@@ -64,6 +74,19 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleNoHandlerFoundException(NoHandlerFoundException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         var detail = String.format("The resource %s is not available", ex.getRequestURL());
         return handleExceptionInternal(ex, detail, headers, status, request, ErrorType.RESOURCE_NOT_FOUND);
+    }
+
+    // Exceção acionada quando um payload passado na requisição viola uma constraint da bean validation
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        var detail = "One or more fields are invalid";
+        var fields = new HashMap<String, String>();
+        handleObjectsErrorToFields(ex, fields);
+        var errorType = ErrorType.INVALID_FIELDS;
+        var error = createResponseErrorBuilder(detail, status, errorType)
+                .fields(fields)
+                .build();
+        return handleExceptionInternal(ex, error, headers, status, request, errorType);
     }
 
     @ExceptionHandler(StateNotFoundException.class)
@@ -121,9 +144,12 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, error, headers, statusCode, request, errorType);
     }
 
-    private ResponseEntity<Object> handlePropertyBindingException(PropertyBindingException ex, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+    private ResponseEntity<Object> handlePropertyBindingException(PropertyBindingException ex, HttpHeaders headers,
+                                                                  HttpStatusCode statusCode, WebRequest request)
+    {
         var fields = new HashMap<String, String >();
         ex.getPath().forEach(cv -> {
+            // FIXME: Bug when some unknown property show appears as object at the body (Ex: cuisine {"unknownProperty" : "dsada"}
             if (cv.getFieldName() != null) {
                 fields.put(cv.getFieldName(), "Invalid property");
             }
@@ -146,7 +172,9 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, message, headers, status, request, ErrorType.INVALID_PARAMETER);
     }
 
-    private ResponseError.ResponseErrorBuilder createResponseErrorBuilder(@Nullable String detail, HttpStatusCode status, ErrorType type) {
+    private ResponseError.ResponseErrorBuilder createResponseErrorBuilder(@Nullable String detail,
+                                                                          HttpStatusCode status, ErrorType type)
+    {
         return ResponseError.builder()
                 .title(type.getTitle())
                 .status(status.value())
@@ -154,4 +182,19 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
                 .type(type.getUri())
                 .timestamp(LocalDateTime.now());
     }
+
+    private void handleObjectsErrorToFields(MethodArgumentNotValidException e,Map<String, String> fields) {
+        e.getBindingResult().getAllErrors()
+                .forEach(objectError -> {
+                    String message = Optional.of(messageSource.getMessage(objectError, LocaleContextHolder.getLocale()))
+                            .orElse(objectError.getDefaultMessage());
+                    String name = objectError.getObjectName() + " (Entity)";
+
+                    if (objectError instanceof FieldError fieldError) {
+                        name = fieldError.getField();
+                    }
+                    fields.put(name, message);
+                });
+    }
+
 }

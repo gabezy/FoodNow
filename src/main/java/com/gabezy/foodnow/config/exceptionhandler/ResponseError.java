@@ -7,9 +7,11 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 @Getter
 @Builder
-@JsonInclude(content = JsonInclude.Include.NON_NULL)
+@JsonInclude(value = NON_NULL)
 public class ResponseError {
 
   private Integer status;

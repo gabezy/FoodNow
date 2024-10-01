@@ -2,6 +2,7 @@ package com.gabezy.foodnow.controllers;
 
 import com.gabezy.foodnow.domain.entity.City;
 import com.gabezy.foodnow.services.CityService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +18,7 @@ public class CityController {
     private final CityService cityService;
 
     @PostMapping
-    public ResponseEntity<City> create(@RequestBody City input, UriComponentsBuilder builder) {
+    public ResponseEntity<City> create(@Valid @RequestBody City input, UriComponentsBuilder builder) {
         var city = cityService.save(input);
         var uri = builder.path("/cities/{id}").buildAndExpand(city.getId()).toUri();
         return ResponseEntity.created(uri).body(city);

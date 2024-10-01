@@ -9,7 +9,8 @@ public enum ErrorType {
     CONFLICT("/conflict", "Entity in use"),
     INVALID_PARAMETER("/invalid-parameter", "Invalid parameter"),
     RESOURCE_NOT_FOUND("/resource-not-found", "Resource not found"),
-    INTERNAL_ERROR("/internal-server-error", "Internal Server Error");
+    INTERNAL_ERROR("/internal-server-error", "Internal Server Error"),
+    INVALID_FIELDS("/invalid-fields", "Invalid fields");
 
     private String uri;
     private String title;

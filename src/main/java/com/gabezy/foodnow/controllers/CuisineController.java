@@ -1,14 +1,12 @@
 package com.gabezy.foodnow.controllers;
 
 import com.gabezy.foodnow.domain.entity.Cuisine;
-import com.gabezy.foodnow.exceptions.EntityNotFoundException;
 import com.gabezy.foodnow.repositories.CuisineRepository;
 import com.gabezy.foodnow.services.CuisineService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Limit;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -52,7 +50,7 @@ public class CuisineController {
     }
 
     @PostMapping
-    public ResponseEntity<Cuisine> create(@RequestBody Cuisine cuisine, UriComponentsBuilder builder) {
+    public ResponseEntity<Cuisine> create(@Valid @RequestBody Cuisine cuisine, UriComponentsBuilder builder) {
         var cuisineSaved = cuisineRepository.save(cuisine);
         URI uri = builder.path("/cuisines/{id}").buildAndExpand(cuisineSaved.getId()).toUri();
         return ResponseEntity.created(uri).body(cuisineSaved);

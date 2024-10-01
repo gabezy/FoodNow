@@ -6,30 +6,36 @@ import com.gabezy.foodnow.domain.entity.Restaurant;
 import com.gabezy.foodnow.repositories.RestaurantRepository;
 import com.gabezy.foodnow.services.RestaurantService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.SmartValidator;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 @RestController
 @RequestMapping("/restaurants")
 @RequiredArgsConstructor
+@Slf4j
 public class RestaurantController {
 
     private final RestaurantRepository restaurantRepository;
     private final RestaurantService restaurantService;
-
-    Logger logger = Logger.getLogger(getClass().getName());
+    private final SmartValidator validator;
 
     @GetMapping("/{id}")
     public ResponseEntity<Restaurant> findById(@PathVariable Long id) {
@@ -54,7 +60,7 @@ public class RestaurantController {
     }
 
     @PostMapping
-    public ResponseEntity<Restaurant> create(@RequestBody Restaurant input, UriComponentsBuilder builder) {
+    public ResponseEntity<Restaurant> create(@Valid @RequestBody Restaurant input, UriComponentsBuilder builder) {
         var restaurant = restaurantService.save(input);
         var uri = builder.path("restaurants/{id}").buildAndExpand(restaurant.getId()).toUri();
         return ResponseEntity.created(uri).body(restaurant);
@@ -66,9 +72,10 @@ public class RestaurantController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<?> patch(@PathVariable Long id, @RequestBody Map<String, Object> fields, HttpServletRequest request) {
+    public ResponseEntity<?> patch(@PathVariable Long id, @RequestBody Map<String, Object> fields, HttpServletRequest request) throws MethodArgumentNotValidException {
         var restaurantSaved = restaurantRepository.findById(id).get();
         this.merge(fields, restaurantSaved, request);
+        validate(restaurantSaved, "restaurant");
         restaurantRepository.save(restaurantSaved);
         return ResponseEntity.ok(restaurantSaved);
     }
@@ -80,8 +87,8 @@ public class RestaurantController {
             objectMapper.configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, true);
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
             Restaurant restaurantOrigin = objectMapper.convertValue(fields, Restaurant.class);
-            logger.info("merging restaurant " + restaurantOrigin.getName());
-            logger.info("merging restaurant " + restaurantOrigin.getDeliveryFee());
+            log.info("merging restaurant {}", restaurantOrigin.getName());
+            log.info("merging restaurant {}", restaurantOrigin.getDeliveryFee());
             fields.forEach((key, value) -> {
                 Field field = ReflectionUtils.findField(Restaurant.class, key);
                 if (field != null) {
@@ -94,5 +101,23 @@ public class RestaurantController {
             Throwable rootCause = ExceptionUtils.getRootCause(e);
             throw new HttpMessageNotReadableException(e.getMessage(), rootCause, serverHttpRequest );
         }
+    }
+
+    private void validate(Restaurant restaurant, String objectName) throws MethodArgumentNotValidException {
+        BeanPropertyBindingResult beanPropertyBindingResult = new BeanPropertyBindingResult(restaurant, objectName);
+
+        validator.validate(restaurant, beanPropertyBindingResult);
+
+        if (beanPropertyBindingResult.hasErrors()) {
+            throw new MethodArgumentNotValidException(getMergeMethodParameter(), beanPropertyBindingResult);
+        }
+    }
+
+    private MethodParameter getMergeMethodParameter() {
+            var classMethod = Arrays.stream(this.getClass().getDeclaredMethods())
+                    .filter(method -> method.getName().equalsIgnoreCase("patch"))
+                    .findFirst()
+                    .orElseThrow(() -> new NoSuchMethodError("methid not found"));
+            return new MethodParameter(classMethod, -1);
     }
 }

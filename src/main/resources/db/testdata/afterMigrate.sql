@@ -88,12 +88,12 @@ INSERT INTO city (name, state_id) VALUES ('Curitiba', 5);
 INSERT INTO city (name, state_id) VALUES ('Londrina', 5);
 
 -- Insert restaurants
-INSERT INTO restaurant (name, delivery_fee, cuisine_id, address_city_id, address_zipcode, address_street, address_number, created_at) VALUES ('Mc Donalds', 15, 5, 1, '38400-999', 'Rua João Pinheiro', '1000', CURRENT_TIMESTAMP);
-INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at ) VALUES ('Burger King', 5, 5, CURRENT_TIMESTAMP);
-INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at ) VALUES ('Fogo de chão', 17.5, 2, CURRENT_TIMESTAMP);
-INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at) VALUES ('Thai delivery food', 6, 1, CURRENT_TIMESTAMP);
-INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at ) VALUES ('Curry delicious delivery', 9, 3, CURRENT_TIMESTAMP);
-INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at ) VALUES ('Oktoberfest Restaurant', 27, 4, CURRENT_TIMESTAMP);
+INSERT INTO restaurant (name, delivery_fee, cuisine_id, address_city_id, address_zipcode, address_street, address_number, created_at) VALUES ('Mc Donalds', 15, 5, 1, '38400-999', 'Rua João Pinheiro', '1000', CURRENT_TIMESTAMP AT TIME ZONE 'UTC');
+INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at ) VALUES ('Burger King', 5, 5, CURRENT_TIMESTAMP AT TIME ZONE 'UTC');
+INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at ) VALUES ('Fogo de chão', 17.5, 2, CURRENT_TIMESTAMP AT TIME ZONE 'UTC');
+INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at) VALUES ('Thai delivery food', 6, 1, CURRENT_TIMESTAMP AT TIME ZONE 'UTC');
+INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at ) VALUES ('Curry delicious delivery', 9, 3, CURRENT_TIMESTAMP AT TIME ZONE 'UTC');
+INSERT INTO restaurant (name, delivery_fee, cuisine_id, created_at ) VALUES ('Oktoberfest Restaurant', 27, 4, CURRENT_TIMESTAMP AT TIME ZONE 'UTC');
 
 -- Inserindo forma de pagamento
 INSERT INTO payment_method (description) VALUES ('Cartão de crédito');

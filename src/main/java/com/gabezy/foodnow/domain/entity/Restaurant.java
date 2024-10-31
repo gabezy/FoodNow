@@ -16,7 +16,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -60,14 +60,14 @@ public class Restaurant {
     @Embedded
     private Address address;
 
-    @JsonIgnore
+//    @JsonIgnore
     @CreationTimestamp // Coloca a timestamp quando criada (faz parte do Hibernate)
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
-    @JsonIgnore
+//    @JsonIgnore
     @UpdateTimestamp // Coloca a timestamp quando atualizada (faz parte do Hibernate)
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @JsonIgnore
     @ManyToMany

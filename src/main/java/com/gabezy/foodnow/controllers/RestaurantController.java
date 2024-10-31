@@ -2,6 +2,7 @@ package com.gabezy.foodnow.controllers;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gabezy.foodnow.domain.dto.RestaurantDTO;
 import com.gabezy.foodnow.domain.entity.Restaurant;
 import com.gabezy.foodnow.repositories.RestaurantRepository;
 import com.gabezy.foodnow.services.RestaurantService;
@@ -38,7 +39,7 @@ public class RestaurantController {
     private final SmartValidator validator;
 
     @GetMapping("/{id}")
-    public ResponseEntity<Restaurant> findById(@PathVariable Long id) {
+    public ResponseEntity<RestaurantDTO> findById(@PathVariable Long id) {
         return ResponseEntity.ok(restaurantService.findById(id));
     }
 
@@ -67,12 +68,12 @@ public class RestaurantController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Restaurant> update(@PathVariable Long id, @RequestBody Restaurant restaurant) {
+    public ResponseEntity<RestaurantDTO> update(@PathVariable Long id, @RequestBody Restaurant restaurant) {
         return ResponseEntity.ok(restaurantService.update(id, restaurant));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<?> patch(@PathVariable Long id, @RequestBody Map<String, Object> fields, HttpServletRequest request) throws MethodArgumentNotValidException {
+    public ResponseEntity<Restaurant> patch(@PathVariable Long id, @RequestBody Map<String, Object> fields, HttpServletRequest request) throws MethodArgumentNotValidException {
         var restaurantSaved = restaurantRepository.findById(id).get();
         this.merge(fields, restaurantSaved, request);
         validate(restaurantSaved, "restaurant");
